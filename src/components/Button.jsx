@@ -2,7 +2,7 @@ import React from 'react'
 
 const Button = ({title}) => {
     return (
-        <button type="button" className="relative border border-yellow-500 font-bold px-6 py-3 rounded transition-colors w-full lg:w-auto group overflow-hidden">
+        <button type="button" className="relative border border-yellow-500 font-bold px-6 py-3 rounded transition-colors w-full lg:w-auto group overflow-hidden cursor-pointer">
             <div className="absolute inset-0 rounded transform -translate-x-full group-hover:translate-x-0 transition-all duration-500 ease-out cursor-pointer bg-yellow-500"></div>
             <div className="relative z-10 text-yellow-500 group-hover:text-black">
                 {title}

@@ -32,7 +32,7 @@ const Hero = () => {
                                     ))}
                                 </div>
                                 <div>
-                                    <span className="font-bold">+10k </span>Students
+                                    <span className="font-bold">10k+ </span>Students
                                 </div>
                             </div>
                         </div>
