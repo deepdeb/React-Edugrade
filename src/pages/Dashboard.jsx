@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 
 function Dashboard() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [courses, setCourses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [enrollingId, setEnrollingId] = useState(null);
@@ -43,6 +45,12 @@ function Dashboard() {
     <div>
       <h2 className="text-2xl font-bold text-gray-800 mb-1">Course Catalog</h2>
       <p className="text-gray-500 mb-8">Browse our available courses and start learning today.</p>
+
+      {/* XP INDICATOR */}
+      <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-4 mb-8 flex items-center gap-4">
+        <div className="text-sm font-medium text-gray-500">Total XP</div>
+        <div className="text-xl font-bold text-yellow-600">{user?.xp || 0}</div>
+      </div>
 
       {loading ? (
         <div className="text-center py-16 text-gray-500">Loading courses...</div>

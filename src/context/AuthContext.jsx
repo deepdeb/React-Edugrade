@@ -1,8 +1,15 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
 import apiClient from '../api/client';
 import { jwtDecode } from 'jwt-decode';
 
 const AuthContext = createContext(null);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  return context;
+};
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
@@ -43,6 +50,10 @@ export function AuthProvider({ children }) {
     }
   };
 
+  const updateUser = (new_data) => {
+    setUser(prev => ({ ...prev, ...new_data }))
+  };
+
   const login = async (token) => {
     localStorage.setItem('edugrade_token', token);
     await fetchUser();
@@ -54,14 +65,8 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );
 }
-
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
-  return context;
-};

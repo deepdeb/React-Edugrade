@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
 import apiClient from '../api/client';
-import { Plus, ArrowLeft, Globe, GlobeLock, LoaderCircle } from 'lucide-react';
+import { Plus, ArrowLeft } from 'lucide-react';
 
 function Studio() {
   const [courses, setCourses] = useState([]);
@@ -54,21 +54,57 @@ function Studio() {
   // Handler: Toggle Publish
   const handleTogglePublish = async (courseId) => {
     setToggleCourseId(courseId);
+
+    // Save state snapshots for potential rollback
+    const previousCourses = [...courses];
+    const previousSelectedCourse = selectedCourse ? { ...selectedCourse } : null;
+
+    let targetIsPublished = false;
+
+    // 1. OPTIMISTIC UPDATE: Update UI state immediately
+    setCourses((prevCourses) =>
+      prevCourses.map((course) => {
+        if (course.id === courseId) {
+          targetIsPublished = !course.is_published;
+          return { ...course, is_published: targetIsPublished };
+        }
+        return course;
+      })
+    );
+
+    // 2. OPTIMISTIC UPDATE: Update selected course's state immediately
+    if (selectedCourse && selectedCourse.id === courseId) {
+      setSelectedCourse((prevCourse) => ({
+        ...prevCourse,
+        is_published: targetIsPublished,
+      }));
+    }
+
+    // API Call
     try {
       const response = await apiClient.patch(`/courses/studio/${courseId}/publish`);
 
-      const status = response.data.is_published ? 'published' : 'unpublished';
-      toast.success(`Course ${status}!`);
-
-      // Refresh the course list to show the new status
-      const listRes = await apiClient.get('/courses/studio');
-      setCourses(listRes.data);
+      // Update with exact server payload (recovers any computed fields if returned)
+      setCourses((prevCourses) =>
+        prevCourses.map((course) =>
+          course.id === courseId ? response.data : course
+        )
+      );
 
       // If we are currently inside this course's detail view, update it there too
       if (selectedCourse && selectedCourse.id === courseId) {
         setSelectedCourse(response.data);
       }
+
+      toast.success(
+        `Course ${response.data.is_published ? 'published' : 'unpublished'}!`
+      );
     } catch (err) {
+      // 3. ROLLBACK: Revert to previous state on failure
+      setCourses(previousCourses);
+      if (previousSelectedCourse) {
+        setSelectedCourse(previousSelectedCourse);
+      }
       toast.error("Failed to update course status.");
     } finally {
       setToggleCourseId(null);
@@ -176,20 +212,25 @@ function Studio() {
                   </div>
 
                   {/* Toggle Button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation(); // Prevents opening the course detail
-                      handleTogglePublish(course.id);
-                    }}
-                    disabled={toggleCourseId === course.id}
-                    className={`ml-4 p-2 rounded-md transition cursor-pointer ${course.is_published
-                      ? 'bg-green-100 text-green-700 hover:bg-green-200'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                      }`}
-                    title={course.is_published ? 'Unpublish' : 'Publish'}
-                  >
-                    {toggleCourseId === course.id ? <LoaderCircle className="w-5 h-5 text-yellow-500 animate-spin" /> : course.is_published ? <Globe className="w-5 h-5" /> : <GlobeLock className="w-5 h-5" />}
-                  </button>
+                  <div className="flex flex-col items-end">
+                    <span className="text-[11px] font-medium text-gray-500 mb-1 select-none">{course.is_published ? 'Unpublish' : 'Publish'}</span>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={course.is_published}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevents opening the course detail
+                        handleTogglePublish(course.id);
+                      }}
+                      disabled={toggleCourseId === course.id}
+                      className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer disabled:opacity-50 ${course.is_published
+                        ? 'bg-emerald-500' : 'bg-gray-200'
+                        }`}
+                      title={course.is_published ? 'Unpublish' : 'Publish'}
+                    >
+                      <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${course.is_published ? 'translate-x-4.5' : 'translate-x-0.5'}`} />
+                    </button>
+                  </div>
                 </div>
               ))
             )}
@@ -212,18 +253,35 @@ function Studio() {
                 </span>
               </div>
 
-              {/* Toggle Button inside detail view */}
 
-              <button
-                onClick={() => handleTogglePublish(selectedCourse.id)}
-                disabled={toggleCourseId === selectedCourse.id}
-                className={`flex items-center gap-2 p-2 rounded-md text-sm font-medium transition cursor-pointer ${selectedCourse.is_published
-                  ? 'bg-gray-100 text-gray-500 hover:bg-gray-200' : 'bg-green-100 text-green-700 hover:bg-green-200'
-                  }`}
-                title={selectedCourse.is_published ? 'Unpublish' : 'Publish'}
-              >
-                {toggleCourseId === selectedCourse.id ? <><LoaderCircle className={`w-4 h-4 ${selectedCourse.is_published ? 'text-gray-500' : 'text-green-500'} animate-spin`} /> </> : selectedCourse.is_published ? <GlobeLock className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
-              </button>
+              {/* Toggle Button inside detail view */}
+              <div>
+                <span className="text-[11px] font-medium text-gray-500 mb-1 select-none">
+                  {selectedCourse.is_published ? 'Unpublish' : 'Publish'}
+                </span>
+
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={selectedCourse.is_published}
+                  onClick={() => handleTogglePublish(selectedCourse.id)}
+                  disabled={toggleCourseId === selectedCourse.id}
+                  className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors cursor-pointer disabled:opacity-50 ${selectedCourse.is_published
+                    ? 'bg-emerald-500'
+                    : 'bg-gray-200'
+                    }`}
+                  title={
+                    selectedCourse.is_published ? 'Unpublish' : 'Publish'
+                  }
+                >
+                  <span
+                    className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${selectedCourse.is_published
+                      ? 'translate-x-4.5'
+                      : 'translate-x-0.5'
+                      }`}
+                  />
+                </button>
+              </div>
             </div>
             <p className="text-sm text-gray-400 mb-6">Manage the learning path for this course.</p>
 

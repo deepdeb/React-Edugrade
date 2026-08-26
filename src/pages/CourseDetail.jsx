@@ -1,14 +1,17 @@
+// src/pages/CourseDetail.jsx
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import apiClient from '../api/client';
 import { CheckCircle, Circle, ArrowLeft } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
 
 function CourseDetail() {
   const { courseId } = useParams();
   const [course, setCourse] = useState(null);
   const [loading, setLoading] = useState(true);
   const [completingId, setCompletingId] = useState(null);
+  const { user, updateUser } = useAuth();
 
   useEffect(() => {
     const fetchCourse = async () => {
@@ -30,7 +33,9 @@ function CourseDetail() {
     try {
       await apiClient.post(`/progress/${moduleId}/complete`);
       toast.success("Module completed!");
-      
+      // Update user's global XP
+      updateUser({ ...user, xp: user.xp + 50 });
+
       // Optimistically update the UI without needing to refetch the whole course
       setCourse(prevCourse => ({
         ...prevCourse,
@@ -65,18 +70,17 @@ function CourseDetail() {
       {/* Modules List */}
       <div className="space-y-4">
         <h3 className="text-lg font-semibold text-gray-700">Course Modules</h3>
-        
+
         {course.modules.length === 0 ? (
           <p className="text-gray-400 text-sm">No modules available for this course yet.</p>
         ) : (
           course.modules
             .sort((a, b) => a.order - b.order) // Ensure they display in correct order
             .map((mod) => (
-              <div 
-                key={mod.id} 
-                className={`flex items-center justify-between p-4 rounded-lg border transition ${
-                  mod.is_completed ? 'bg-green-50 border-green-100' : 'bg-white border-gray-100 hover:shadow-sm'
-                }`}
+              <div
+                key={mod.id}
+                className={`flex items-center justify-between p-4 rounded-lg border transition ${mod.is_completed ? 'bg-green-50 border-green-100' : 'bg-white border-gray-100 hover:shadow-sm'
+                  }`}
               >
                 <div className="flex items-center gap-4">
                   {mod.is_completed ? (
@@ -90,7 +94,7 @@ function CourseDetail() {
                 </div>
 
                 {!mod.is_completed && (
-                  <button 
+                  <button
                     onClick={() => handleCompleteModule(mod.id)}
                     disabled={completingId === mod.id}
                     className="bg-yellow-500 text-gray-900 text-sm font-semibold px-4 py-2 rounded-md hover:bg-yellow-600 transition disabled:opacity-50"
